@@ -91,7 +91,7 @@
                             <p class="text-xs text-gray-500 uppercase font-semibold">Daily Energy</p>
                             <p class="font-bold text-lg text-amber-700">{{ dailyEnergyCostInclVat.toFixed(2) }} SAR</p>
                         </div>
-                        <div class="flex-1 min-w-[150px]">
+                        <div v-if="settings.includeSawDisk" class="flex-1 min-w-[150px]">
                             <p class="text-xs text-gray-500 uppercase font-semibold">Disk Cost/Unit</p>
                             <p class="font-bold text-lg text-rose-600">{{ sawDiskCostPerUnit.toFixed(4) }} SAR</p>
                         </div>
@@ -107,6 +107,7 @@
                     <div class="absolute left-8 top-4 bottom-4 w-0.5 bg-slate-200 z-0 hidden md:block"></div>
 
                     <div class="space-y-10 relative z-10">
+                        
                         <!-- Step 1: Raw Materials -->
                         <div class="flex flex-col md:flex-row gap-6">
                             <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
@@ -192,22 +193,31 @@
                             </div>
                         </div>
 
-                        <!-- Step 3: Spare Parts & Consumables (Saw Disk) - MOVED HERE -->
+                        <!-- Step 3: Spare Parts & Consumables (Saw Disk) -->
                         <div class="flex flex-col md:flex-row gap-6">
                             <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
                                 <div class="w-10 h-10 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">3</div>
                             </div>
-                            <div class="flex-grow bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                                <div class="mb-5">
-                                    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                        <i class="fa-solid fa-tools text-rose-500"></i> Spare Parts & Consumables
-                                    </h3>
-                                    <p class="text-sm text-slate-500 mt-1 flex items-start gap-1">
-                                        <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
-                                        Saw disk replacement cost per unit produced based on its lifespan.
-                                    </p>
+                            <div :class="settings.includeSawDisk ? 'border-rose-200' : 'border-slate-100'" class="flex-grow bg-white p-6 rounded-2xl shadow-sm border transition-colors">
+                                <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-5 gap-4">
+                                    <div>
+                                        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                            <i :class="settings.includeSawDisk ? 'text-rose-500' : 'text-slate-400'" class="fa-solid fa-tools"></i> 
+                                            Spare Parts (Saw Disk)
+                                        </h3>
+                                        <p class="text-sm text-slate-500 mt-1 flex items-start gap-1">
+                                            <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
+                                            Calculate saw disk depreciation cost per single cut unit.
+                                        </p>
+                                    </div>
+                                    <button @click="settings.includeSawDisk = !settings.includeSawDisk"
+                                        :class="settings.includeSawDisk ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'"
+                                        class="flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-colors border">
+                                        <i :class="settings.includeSawDisk ? 'fa-toggle-on text-rose-500' : 'fa-toggle-off text-slate-400'" class="fa-solid text-2xl"></i>
+                                        {{ settings.includeSawDisk ? 'Enabled' : 'Disabled' }}
+                                    </button>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div :class="settings.includeSawDisk ? 'opacity-100' : 'opacity-40 pointer-events-none'" class="grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity">
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700 mb-1">Saw Disk Price (SAR)</label>
                                         <input type="number" step="0.01" v-model.number="settings.sawDiskPrice" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-slate-50 focus:bg-white">
@@ -217,14 +227,14 @@
                                         <input type="number" v-model.number="settings.sawDiskLifespan" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-slate-50 focus:bg-white">
                                     </div>
                                 </div>
-                                <div class="mt-4 px-4 py-3 bg-rose-50/50 border border-rose-100 rounded-lg flex justify-between items-center">
+                                <div v-if="settings.includeSawDisk" class="mt-4 px-4 py-3 bg-rose-50/50 border border-rose-100 rounded-lg flex justify-between items-center animate-fade-in">
                                     <span class="text-sm text-rose-800 font-medium">Disk Depreciation per Unit:</span>
                                     <span class="font-bold text-rose-900">{{ sawDiskCostPerUnit.toFixed(4) }} SAR</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Step 4: Energy (MOVED) -->
+                        <!-- Step 4: Energy -->
                         <div class="flex flex-col md:flex-row gap-6">
                             <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
                                 <div class="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">4</div>
@@ -260,8 +270,8 @@
                             </div>
                         </div>
 
-                        <!-- Step 5: Facility (MOVED) -->
-                        <div class="flex flex-col md:flex-row gap-6 pb-8">
+                        <!-- Step 5: Facility -->
+                        <div class="flex flex-col md:flex-row gap-6">
                             <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
                                 <div class="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">5</div>
                             </div>
@@ -274,7 +284,7 @@
                                         </h3>
                                         <p class="text-sm text-slate-500 mt-1 flex items-start gap-1">
                                             <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
-                                            Optional: Include location rent and machine depreciation/costs.
+                                            Optional: Include location rent and machine depreciation.
                                         </p>
                                     </div>
                                     <button @click="settings.includeFacilityCosts = !settings.includeFacilityCosts"
@@ -286,7 +296,7 @@
                                 </div>
                                 <div :class="settings.includeFacilityCosts ? 'opacity-100' : 'opacity-40 pointer-events-none'" class="grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity">
                                     <div>
-                                        <label class="block text-sm font-medium text-slate-700 mb-1">Monthly Location Rent (SAR)</label>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Monthly Rent (SAR)</label>
                                         <input type="number" v-model.number="settings.monthlyRent" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 focus:bg-white">
                                     </div>
                                     <div>
@@ -297,6 +307,39 @@
                                 <div v-if="settings.includeFacilityCosts" class="mt-4 px-4 py-3 bg-indigo-50/50 border border-indigo-100 rounded-lg flex justify-between items-center animate-fade-in">
                                     <span class="text-sm text-indigo-800 font-medium">Daily Facility Overhead:</span>
                                     <span class="font-bold text-indigo-900">{{ dailyFacilityCost.toFixed(2) }} SAR</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 6: Packaging -->
+                        <div class="flex flex-col md:flex-row gap-6 pb-8">
+                            <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
+                                <div class="w-10 h-10 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">6</div>
+                            </div>
+                            <div :class="settings.includePackaging ? 'border-purple-200' : 'border-slate-100'" class="flex-grow bg-white p-6 rounded-2xl shadow-sm border transition-colors">
+                                <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-5 gap-4">
+                                    <div>
+                                        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                            <i :class="settings.includePackaging ? 'text-purple-600' : 'text-slate-400'" class="fa-solid fa-box-open"></i> 
+                                            Packaging Costs
+                                        </h3>
+                                        <p class="text-sm text-slate-500 mt-1 flex items-start gap-1">
+                                            <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
+                                            Optional: Add strapping, plastic wrap, or pallet costs per bundle.
+                                        </p>
+                                    </div>
+                                    <button @click="settings.includePackaging = !settings.includePackaging"
+                                        :class="settings.includePackaging ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'"
+                                        class="flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-colors border">
+                                        <i :class="settings.includePackaging ? 'fa-toggle-on text-purple-600' : 'fa-toggle-off text-slate-400'" class="fa-solid text-2xl"></i>
+                                        {{ settings.includePackaging ? 'Enabled' : 'Disabled' }}
+                                    </button>
+                                </div>
+                                <div :class="settings.includePackaging ? 'opacity-100' : 'opacity-40 pointer-events-none'" class="grid grid-cols-1 gap-4 transition-opacity max-w-sm">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Packaging Cost per Bundle (SAR)</label>
+                                        <input type="number" step="0.01" v-model.number="settings.packagingCostPerBundle" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-slate-50 focus:bg-white">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -367,7 +410,7 @@
                                     <p class="text-slate-400 text-sm mt-1">Cost Breakdown & Financial Analysis</p>
                                 </div>
                                 
-                                <div :class="settings.includeFacilityCosts ? 'lg:grid-cols-5' : 'lg:grid-cols-4'" class="grid grid-cols-2 gap-3 mb-8">
+                                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-8">
                                     <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/50">
                                         <p class="text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">Materials</p>
                                         <p class="text-xl font-bold">{{ materialCost(product).toFixed(4) }} <span class="text-xs font-normal text-slate-500">SAR</span></p>
@@ -380,14 +423,17 @@
                                         <p class="text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">Energy</p>
                                         <p class="text-xl font-bold text-amber-400">{{ energyCost(product).toFixed(4) }} <span class="text-xs font-normal text-amber-600">SAR</span></p>
                                     </div>
-                                    <!-- Added Spares box here -->
-                                    <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/50">
-                                        <p class="text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">Spares</p>
+                                    <div v-if="settings.includeSawDisk" class="bg-slate-800/80 p-4 rounded-2xl border border-rose-900/30 animate-fade-in">
+                                        <p class="text-rose-300 text-xs mb-1 uppercase tracking-wider font-semibold">Spares</p>
                                         <p class="text-xl font-bold text-rose-400">{{ sawDiskCostPerUnit.toFixed(4) }} <span class="text-xs font-normal text-rose-600">SAR</span></p>
                                     </div>
                                     <div v-if="settings.includeFacilityCosts" class="bg-slate-800/80 p-4 rounded-2xl border border-indigo-900/30 animate-fade-in">
                                         <p class="text-indigo-300 text-xs mb-1 uppercase tracking-wider font-semibold">Facility</p>
                                         <p class="text-xl font-bold text-indigo-400">{{ facilityCost(product).toFixed(4) }} <span class="text-xs font-normal text-indigo-600">SAR</span></p>
+                                    </div>
+                                    <div v-if="settings.includePackaging" class="bg-slate-800/80 p-4 rounded-2xl border border-purple-900/30 animate-fade-in">
+                                        <p class="text-purple-300 text-xs mb-1 uppercase tracking-wider font-semibold">Packaging</p>
+                                        <p class="text-xl font-bold text-purple-400">{{ packagingCost(product).toFixed(4) }} <span class="text-xs font-normal text-purple-600">SAR</span></p>
                                     </div>
                                 </div>
 
@@ -443,23 +489,37 @@
                 return {
                     activeTab: 'settings',
                     settings: {
+                        // Raw Materials
                         gluePrice: 1.61,
                         choppedWoodPrice: 0.20,
                         powderPurchasePrice: 0.252,
                         powderTransportCost: 1000,
                         powderTransportBags: 50,
                         powderBagWeight: 250,
+                        
+                        // Labor
                         laborCount: 4,
                         laborSalary: 1400,
                         workingDaysPerMonth: 30,
+                        
+                        // Saw Disk / Spares (NEW)
+                        includeSawDisk: true,
+                        sawDiskPrice: 550,
+                        sawDiskLifespan: 16200,
+
+                        // Energy
                         dailyEnergyConsumption: 748.4, 
                         electricityTariff: 0.20,       
                         vatPercentage: 15,
+                        
+                        // Facility
+                        includeFacilityCosts: false,
                         monthlyRent: 0,
                         monthlyMachinesCost: 0,
-                        includeFacilityCosts: false,
-                        sawDiskPrice: 550, // Updated exactly to 550
-                        sawDiskLifespan: 16200
+                        
+                        // Packaging (NEW)
+                        includePackaging: false,
+                        packagingCostPerBundle: 0
                     },
                     products: {
                         p160: {
@@ -497,14 +557,18 @@
                 totalMonthlyLaborCost() { return this.settings.laborCount * this.settings.laborSalary; },
                 dailyLaborCost() { return this.totalMonthlyLaborCost / this.settings.workingDaysPerMonth; },
                 
+                sawDiskCostPerUnit() { 
+                    return this.settings.includeSawDisk && this.settings.sawDiskLifespan > 0 
+                        ? (this.settings.sawDiskPrice / this.settings.sawDiskLifespan) 
+                        : 0; 
+                },
+
                 dailyEnergyCostExclVat() { return this.settings.dailyEnergyConsumption * this.settings.electricityTariff; },
                 vatAmount() { return this.dailyEnergyCostExclVat * (this.settings.vatPercentage / 100); },
                 dailyEnergyCostInclVat() { return this.dailyEnergyCostExclVat + this.vatAmount; },
                 
                 totalMonthlyFacilityCost() { return this.settings.monthlyRent + this.settings.monthlyMachinesCost; },
-                dailyFacilityCost() { return this.settings.includeFacilityCosts ? (this.totalMonthlyFacilityCost / this.settings.workingDaysPerMonth) : 0; },
-                
-                sawDiskCostPerUnit() { return this.settings.sawDiskLifespan > 0 ? (this.settings.sawDiskPrice / this.settings.sawDiskLifespan) : 0; }
+                dailyFacilityCost() { return this.settings.includeFacilityCosts ? (this.totalMonthlyFacilityCost / this.settings.workingDaysPerMonth) : 0; }
             },
             methods: {
                 materialCost(product) {
@@ -521,12 +585,18 @@
                 facilityCost(product) {
                     return product.dailyProduction > 0 ? this.dailyFacilityCost / product.dailyProduction : 0;
                 },
+                packagingCost(product) {
+                    return this.settings.includePackaging && product.bundleSize > 0
+                        ? (this.settings.packagingCostPerBundle / product.bundleSize)
+                        : 0;
+                },
                 totalCost(product) {
                     return this.materialCost(product) + 
                            this.laborCost(product) + 
                            this.energyCost(product) + 
                            this.sawDiskCostPerUnit +
-                           (this.settings.includeFacilityCosts ? this.facilityCost(product) : 0);
+                           (this.settings.includeFacilityCosts ? this.facilityCost(product) : 0) + 
+                           this.packagingCost(product);
                 },
                 bundleCost(product) {
                     return this.totalCost(product) * product.bundleSize;
