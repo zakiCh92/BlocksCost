@@ -24,7 +24,7 @@
             .print-hidden { display: none !important; }
             .print-block { display: block !important; }
             .page-break { page-break-after: always; }
-            .tab-content { display: block !important; }
+            .tab-content { display: block !important; } /* In print, show all tabs sequentially */
         }
     </style>
 </head>
@@ -89,6 +89,7 @@
                     </div>
                 </div>
 
+                <!-- Step 2: Labor -->
                 <div class="flex flex-col md:flex-row gap-6">
                     <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
                         <div class="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">2</div>
@@ -105,6 +106,7 @@
                     </div>
                 </div>
 
+                <!-- Step 3: Spares (Saw Disk) -->
                 <div class="flex flex-col md:flex-row gap-6">
                     <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
                         <div class="w-10 h-10 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">3</div>
@@ -121,6 +123,7 @@
                     </div>
                 </div>
 
+                <!-- Step 4: Energy -->
                 <div class="flex flex-col md:flex-row gap-6">
                     <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
                         <div class="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">4</div>
@@ -138,6 +141,7 @@
                     </div>
                 </div>
 
+                <!-- Step 5: Facility -->
                 <div class="flex flex-col md:flex-row gap-6">
                     <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
                         <div class="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">5</div>
@@ -154,6 +158,7 @@
                     </div>
                 </div>
 
+                <!-- Step 6: Packaging -->
                 <div class="flex flex-col md:flex-row gap-6 pb-8">
                     <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
                         <div class="w-10 h-10 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">6</div>
@@ -173,19 +178,27 @@
             </div>
         </div>
 
+        <!-- Container for dynamically generated product tabs -->
         <div id="products-container"></div>
         
     </div>
 
     <script>
-        // State variables
-        let toggles = { spares: true, facility: false, packaging: false };
+        // State variables to manage active toggles
+        let toggles = {
+            spares: true,
+            facility: false,
+            packaging: false
+        };
+
+        // Products base info
         const productsInfo = [
             { id: 'p160', name: 'Block 95x95x160', glue: 0.288, powder: 0.340, chopped: 0.252, prod: 1500, bundle: 1060 },
             { id: 'p95', name: 'Block 95x95x95', glue: 0.171, powder: 0.202, chopped: 0.150, prod: 2000, bundle: 1680 },
             { id: 'p140', name: 'Block 95x95x140', glue: 0.252, powder: 0.298, chopped: 0.221, prod: 1700, bundle: 1200 }
         ];
 
+        // Build product DOM elements
         function buildProducts() {
             const container = document.getElementById('products-container');
             let html = '';
@@ -256,7 +269,9 @@
             container.innerHTML = html;
         }
 
+        // Helper to get value
         function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
+        // Helper to set text
         function text(id, val) { document.getElementById(id).innerText = val; }
 
         function calculate() {
@@ -283,7 +298,7 @@
             // 6. Packaging
             const packBundleCost = toggles.packaging ? v('s_packCost') : 0;
 
-            // Products
+            // Products Iteration
             productsInfo.forEach(p => {
                 const glue = v(`p_glue_${p.id}`);
                 const pow = v(`p_pow_${p.id}`);
@@ -295,10 +310,12 @@
                 const labCost = prod > 0 ? dailyLabor / prod : 0;
                 const eneCost = prod > 0 ? dailyEnergy / prod : 0;
                 const facCost = prod > 0 ? dailyFac / prod : 0;
-                const pacCost = bun > 0 ? packBundleCost / bun : 0;
+                const pacCost = bun > 0 ? packBundleCost / bun : 0; // Packaging per unit
                 
+                // Total Unit Cost
                 const totUnit = matCost + labCost + eneCost + diskUnitCost + facCost + pacCost;
                 
+                // Set DOM
                 text(`out_mat_${p.id}`, matCost.toFixed(4));
                 text(`out_lab_${p.id}`, labCost.toFixed(4));
                 text(`out_ene_${p.id}`, eneCost.toFixed(4));
@@ -330,7 +347,7 @@
             const wrap = document.getElementById(`sec_${sec}`);
             const icon = document.getElementById(`icon_${sec}`);
             
-            // Themes
+            // UI Themes for toggles
             const themes = {
                 spares: { on: 'rose', icon: 'fa-tools' },
                 facility: { on: 'indigo', icon: 'fa-industry' },
@@ -355,7 +372,7 @@
                 icon.className = `fa-solid ${thIcon} text-slate-400`;
             }
 
-            // Show/Hide cards in products
+            // Show/Hide cards in the product results grid
             productsInfo.forEach(p => {
                 const card = document.getElementById(`card_${sec}_${p.id}`);
                 if (card) {
@@ -366,7 +383,10 @@
             calculate();
         }
 
+        // Init
         buildProducts();
+        
+        // Attach event listeners to all inputs
         document.querySelectorAll('.app-input').forEach(input => {
             input.addEventListener('input', calculate);
         });
