@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pressed Wood Blocks Costing System</title>
+    
+    <!-- Vue 3 (No compilation needed, extremely fast and reliable) -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { background-color: #f8fafc; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        [v-cloak] { display: none !important; }
+        
+        /* Print Styles */
+        @media print {
+            body { background: white !important; padding: 0 !important; }
+            .print\:hidden { display: none !important; }
+            .print\:block { display: block !important; }
+            .break-after-page { page-break-after: always; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak class="min-h-screen font-sans text-slate-800 p-4 md:p-8 print:p-0">
+        
+        <!-- Header -->
+        <div class="max-w-6xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
+                    <i class="fa-solid fa-calculator text-blue-600"></i>
+                    Pressed Blocks Costing System
+                </h1>
+                <p class="text-slate-500 mt-2 font-medium">Advanced production cost calculator with precise unit economics</p>
+            </div>
+            <button @click="printPage" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-colors shadow-sm whitespace-nowrap">
+                <i class="fa-solid fa-print"></i>
+                Export PDF
+            </button>
+        </div>
+
+        <!-- Print Header -->
+        <div class="max-w-6xl mx-auto hidden print:block mb-8 border-b-2 border-slate-900 pb-4">
+            <h1 class="text-3xl font-black text-slate-900">Detailed Production Cost Report</h1>
+            <p class="text-slate-500">Date Generated: {{ new Date().toLocaleDateString() }}</p>
+        </div>
+
+        <div class="max-w-6xl mx-auto">
+            
+            <!-- Navigation Tabs -->
+            <div class="flex flex-wrap gap-2 mb-8 bg-slate-200/50 p-1.5 rounded-2xl print:hidden">
+                <button @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/80'" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm">
+                    <i class="fa-solid fa-gear"></i> Global Settings
+                </button>
+                <button @click="activeTab = 'p160'" :class="activeTab === 'p160' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/80'" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm">
+                    <i class="fa-solid fa-cube"></i> 95x95x160
+                </button>
+                <button @click="activeTab = 'p95'" :class="activeTab === 'p95' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/80'" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm">
+                    <i class="fa-solid fa-cube"></i> 95x95x95
+                </button>
+                <button @click="activeTab = 'p140'" :class="activeTab === 'p140' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/80'" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm">
+                    <i class="fa-solid fa-cube"></i> 95x95x140
+                </button>
+            </div>
+
+            <div class="print:block">
+                
+                <!-- Print Mode Summary -->
+                <div class="hidden print:block mb-8">
+                    <h2 class="text-xl font-bold mb-4 bg-slate-100 p-2 rounded">Global Parameters Summary</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 border p-4 rounded-lg">
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-semibold">Powder Cost (kg)</p>
+                            <p class="font-bold text-lg">{{ finalPowderCost.toFixed(4) }} SAR</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-semibold">Daily Labor Overhead</p>
+                            <p class="font-bold text-lg">{{ dailyLaborCost.toFixed(2) }} SAR</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-semibold">Daily Energy (VAT incl)</p>
+                            <p class="font-bold text-lg text-amber-700">{{ dailyEnergyCostInclVat.toFixed(2) }} SAR</p>
+                        </div>
+                        <div v-if="settings.includeFacilityCosts">
+                            <p class="text-xs text-gray-500 uppercase font-semibold">Daily Facility Overhead</p>
+                            <p class="font-bold text-lg text-indigo-700">{{ dailyFacilityCost.toFixed(2) }} SAR</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div v-show="activeTab === 'settings'" class="max-w-4xl animate-fade-in relative print:hidden">
+                    <div class="absolute left-8 top-4 bottom-4 w-0.5 bg-slate-200 z-0 hidden md:block"></div>
+
+                    <div class="space-y-10 relative z-10">
+                        <!-- Step 1 -->
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
+                                <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">1</div>
+                            </div>
+                            <div class="flex-grow bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                <div class="mb-5">
+                                    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                        <i class="fa-solid fa-cube text-blue-600"></i> Raw Material Costs
+                                    </h3>
+                                    <p class="text-sm text-slate-500 mt-1 flex items-start gap-1">
+                                        <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
+                                        Set the base purchasing prices and logistics logic for the primary materials used in production.
+                                    </p>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Liquid Glue Price (SAR/kg)</label>
+                                        <input type="number" step="0.01" v-model.number="settings.gluePrice" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 focus:bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Chopped Wood Price (SAR/kg)</label>
+                                        <input type="number" step="0.01" v-model.number="settings.choppedWoodPrice" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 focus:bg-white">
+                                    </div>
+                                </div>
+                                <div class="mt-6 pt-5 border-t border-slate-100">
+                                    <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2"><i class="fa-solid fa-truck text-slate-400"></i> Ready Wood Powder (Incl. Transport)</h4>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Purchase Price</label>
+                                            <input type="number" step="0.001" v-model.number="settings.powderPurchasePrice" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Transport Cost</label>
+                                            <input type="number" v-model.number="settings.powderTransportCost" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Bags Quantity</label>
+                                            <input type="number" v-model.number="settings.powderTransportBags" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Bag Weight (kg)</label>
+                                            <input type="number" v-model.number="settings.powderBagWeight" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white">
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 px-4 py-3 bg-blue-50/50 border border-blue-100 rounded-lg flex justify-between items-center">
+                                        <span class="text-sm text-blue-800 font-medium">Final Powder Cost:</span>
+                                        <span class="font-bold text-blue-900">{{ finalPowderCost.toFixed(4) }} SAR/kg</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
+                                <div class="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">2</div>
+                            </div>
+                            <div class="flex-grow bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                <div class="mb-5">
+                                    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                        <i class="fa-solid fa-users text-emerald-600"></i> Labor Overheads
+                                    </h3>
+                                    <p class="text-sm text-slate-500 mt-1 flex items-start gap-1">
+                                        <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
+                                        Define the workforce size and salaries to accurately distribute labor costs per block.
+                                    </p>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Total Workers (Line)</label>
+                                        <input type="number" v-model.number="settings.laborCount" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all bg-slate-50 focus:bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Monthly Salary (SAR)</label>
+                                        <input type="number" v-model.number="settings.laborSalary" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all bg-slate-50 focus:bg-white">
+                                    </div>
+                                </div>
+                                <div class="mt-4 px-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-lg flex justify-between items-center">
+                                    <span class="text-sm text-emerald-800 font-medium">Daily Labor Cost ({{settings.workingDaysPerMonth}} days):</span>
+                                    <span class="font-bold text-emerald-900">{{ dailyLaborCost.toFixed(2) }} SAR</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
+                                <div class="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">3</div>
+                            </div>
+                            <div class="flex-grow bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                <div class="mb-5">
+                                    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                        <i class="fa-solid fa-bolt text-amber-500"></i> Energy Consumption
+                                    </h3>
+                                    <p class="text-sm text-slate-500 mt-1 flex items-start gap-1">
+                                        <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
+                                        Based on the official energy audit. Enter the daily kWh and industrial tariff.
+                                    </p>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Daily Cons. (kWh)</label>
+                                        <input type="number" step="0.1" v-model.number="settings.dailyEnergyConsumption" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50 focus:bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Tariff (SAR)</label>
+                                        <input type="number" step="0.01" v-model.number="settings.electricityTariff" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50 focus:bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">VAT (%)</label>
+                                        <input type="number" v-model.number="settings.vatPercentage" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50 focus:bg-white">
+                                    </div>
+                                </div>
+                                <div class="mt-4 px-4 py-3 bg-amber-50/50 border border-amber-100 rounded-lg flex justify-between items-center">
+                                    <span class="text-sm text-amber-800 font-medium">Total Daily Energy (Incl. VAT):</span>
+                                    <span class="font-bold text-amber-900">{{ dailyEnergyCostInclVat.toFixed(2) }} SAR</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4 -->
+                        <div class="flex flex-col md:flex-row gap-6 pb-8">
+                            <div class="md:w-16 flex-shrink-0 flex justify-center mt-2 hidden md:flex">
+                                <div class="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-lg ring-4 ring-white shadow-sm">4</div>
+                            </div>
+                            <div :class="settings.includeFacilityCosts ? 'border-indigo-200' : 'border-slate-100'" class="flex-grow bg-white p-6 rounded-2xl shadow-sm border transition-colors">
+                                <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-5 gap-4">
+                                    <div>
+                                        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                            <i :class="settings.includeFacilityCosts ? 'text-indigo-600' : 'text-slate-400'" class="fa-solid fa-industry"></i> 
+                                            Facility & Machines Overhead
+                                        </h3>
+                                        <p class="text-sm text-slate-500 mt-1 flex items-start gap-1">
+                                            <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
+                                            Optional: Include location rent and machine depreciation/costs in the block's final cost.
+                                        </p>
+                                    </div>
+                                    <button @click="settings.includeFacilityCosts = !settings.includeFacilityCosts"
+                                        :class="settings.includeFacilityCosts ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'"
+                                        class="flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-colors border">
+                                        <i :class="settings.includeFacilityCosts ? 'fa-toggle-on text-indigo-600' : 'fa-toggle-off text-slate-400'" class="fa-solid text-2xl"></i>
+                                        {{ settings.includeFacilityCosts ? 'Enabled' : 'Disabled' }}
+                                    </button>
+                                </div>
+                                <div :class="settings.includeFacilityCosts ? 'opacity-100' : 'opacity-40 pointer-events-none'" class="grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Monthly Location Rent (SAR)</label>
+                                        <input type="number" v-model.number="settings.monthlyRent" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 focus:bg-white">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Machines Monthly Cost (SAR)</label>
+                                        <input type="number" v-model.number="settings.monthlyMachinesCost" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 focus:bg-white">
+                                    </div>
+                                </div>
+                                <div v-if="settings.includeFacilityCosts" class="mt-4 px-4 py-3 bg-indigo-50/50 border border-indigo-100 rounded-lg flex justify-between items-center animate-fade-in">
+                                    <span class="text-sm text-indigo-800 font-medium">Daily Facility Overhead:</span>
+                                    <span class="font-bold text-indigo-900">{{ dailyFacilityCost.toFixed(2) }} SAR</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Sections -->
+                <div v-for="(product, key) in products" :key="key" 
+                     :class="activeTab === key ? 'block' : 'hidden print:block'" 
+                     class="animate-fade-in space-y-12">
+                     
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Left Side: Product Configuration Timeline -->
+                        <div class="lg:col-span-1 relative">
+                            <div class="absolute left-6 top-4 bottom-4 w-0.5 bg-slate-200 z-0 hidden lg:block"></div>
+                            
+                            <div class="space-y-8 relative z-10">
+                                <!-- Step 1: Recipe -->
+                                <div class="relative">
+                                    <div class="absolute -left-3 top-0 w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-xs ring-4 ring-slate-50 shadow-sm hidden lg:flex">1</div>
+                                    <div class="lg:ml-8 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                        <h3 class="text-lg font-bold text-slate-800 mb-1">Block Recipe</h3>
+                                        <p class="text-xs text-slate-500 mb-4 leading-relaxed">Exact weights required to produce a single block unit.</p>
+                                        <div class="space-y-3">
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-600 mb-1 flex justify-between">Liquid Glue <span class="text-xs text-slate-400">kg</span></label>
+                                                <input type="number" step="0.001" v-model.number="product.glue" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-400 outline-none">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-600 mb-1 flex justify-between">Wood Powder <span class="text-xs text-slate-400">kg</span></label>
+                                                <input type="number" step="0.001" v-model.number="product.powder" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-400 outline-none">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-600 mb-1 flex justify-between">Chopped Wood <span class="text-xs text-slate-400">kg</span></label>
+                                                <input type="number" step="0.001" v-model.number="product.chopped" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-400 outline-none">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 2: Production Info -->
+                                <div class="relative">
+                                    <div class="absolute -left-3 top-0 w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-xs ring-4 ring-slate-50 shadow-sm hidden lg:flex">2</div>
+                                    <div class="lg:ml-8 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                        <h3 class="text-lg font-bold text-slate-800 mb-1">Production Target</h3>
+                                        <p class="text-xs text-slate-500 mb-4 leading-relaxed">Daily output target and packaging capacity (Bundle).</p>
+                                        <div class="space-y-3">
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-600 mb-1">Daily Production (Units)</label>
+                                                <input type="number" v-model.number="product.dailyProduction" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-400 outline-none">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-600 mb-1">Bundle Size (Units)</label>
+                                                <input type="number" v-model.number="product.bundleSize" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-400 outline-none">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: Results Section -->
+                        <div class="lg:col-span-2 relative">
+                            <div class="bg-slate-900 p-8 rounded-3xl shadow-xl text-white sticky top-6">
+                                <div class="mb-8 border-b border-slate-800 pb-4">
+                                    <h2 class="text-2xl font-bold text-white tracking-tight">{{ product.name }}</h2>
+                                    <p class="text-slate-400 text-sm mt-1">Cost Breakdown & Financial Analysis</p>
+                                </div>
+                                
+                                <div :class="settings.includeFacilityCosts ? 'md:grid-cols-4' : 'md:grid-cols-3'" class="grid grid-cols-2 gap-3 mb-8">
+                                    <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/50">
+                                        <p class="text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">Materials</p>
+                                        <p class="text-xl font-bold">{{ materialCost(product).toFixed(4) }} <span class="text-xs font-normal text-slate-500">SAR</span></p>
+                                    </div>
+                                    <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/50">
+                                        <p class="text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">Labor</p>
+                                        <p class="text-xl font-bold">{{ laborCost(product).toFixed(4) }} <span class="text-xs font-normal text-slate-500">SAR</span></p>
+                                    </div>
+                                    <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/50">
+                                        <p class="text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">Energy</p>
+                                        <p class="text-xl font-bold text-amber-400">{{ energyCost(product).toFixed(4) }} <span class="text-xs font-normal text-amber-600">SAR</span></p>
+                                    </div>
+                                    <div v-if="settings.includeFacilityCosts" class="bg-slate-800/80 p-4 rounded-2xl border border-indigo-900/30 animate-fade-in">
+                                        <p class="text-indigo-300 text-xs mb-1 uppercase tracking-wider font-semibold">Facility</p>
+                                        <p class="text-xl font-bold text-indigo-400">{{ facilityCost(product).toFixed(4) }} <span class="text-xs font-normal text-indigo-600">SAR</span></p>
+                                    </div>
+                                </div>
+
+                                <div class="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-2xl mb-6 shadow-inner relative overflow-hidden">
+                                    <div class="relative z-10">
+                                        <p class="text-blue-100 text-xs mb-1 uppercase tracking-widest font-semibold">Total Cost per Unit</p>
+                                        <div class="flex items-baseline gap-2">
+                                            <p class="text-5xl font-black">{{ totalCost(product).toFixed(4) }}</p>
+                                            <span class="text-xl font-medium text-blue-200">SAR</span>
+                                        </div>
+                                    </div>
+                                    <i class="fa-solid fa-cube absolute -right-4 -bottom-6 text-blue-500 opacity-20 transform -rotate-12" style="font-size: 120px;"></i>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="bg-slate-800/50 p-5 rounded-2xl flex justify-between items-center border border-slate-700/50">
+                                        <div>
+                                            <p class="text-slate-400 text-xs uppercase tracking-wider mb-1 font-semibold">Bundle Cost ({{product.bundleSize}} units)</p>
+                                            <p class="text-xl font-bold text-emerald-400">{{ bundleCost(product).toFixed(2) }} <span class="text-sm font-normal text-emerald-600">SAR</span></p>
+                                        </div>
+                                        <i class="fa-solid fa-box-open text-3xl text-slate-600"></i>
+                                    </div>
+                                    <div class="bg-slate-800/50 p-5 rounded-2xl flex justify-between items-center border border-slate-700/50">
+                                        <div>
+                                            <p class="text-slate-400 text-xs uppercase tracking-wider mb-1 font-semibold">Daily Production Cost</p>
+                                            <p class="text-xl font-bold text-white">{{ dailyCost(product).toFixed(2) }} <span class="text-sm font-normal text-slate-500">SAR</span></p>
+                                        </div>
+                                        <i class="fa-solid fa-bolt text-3xl text-slate-600"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Add page break after each product when printing (except the last one but CSS handles it gracefully) -->
+                    <div class="break-after-page print:block hidden"></div>
+                </div>
+
+            </div>
+        </div>
+        
+        <!-- Footer Info -->
+        <div class="max-w-6xl mx-auto mt-16 pb-8 text-center text-slate-400 text-xs font-medium print:hidden">
+            <p>Custom Production Cost Calculation System • Wood Blocks Factory</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    activeTab: 'settings',
+                    settings: {
+                        gluePrice: 1.61,
+                        choppedWoodPrice: 0.20,
+                        powderPurchasePrice: 0.252,
+                        powderTransportCost: 1000,
+                        powderTransportBags: 50,
+                        powderBagWeight: 250,
+                        laborCount: 4,
+                        laborSalary: 1400,
+                        workingDaysPerMonth: 30,
+                        dailyEnergyConsumption: 748.4, 
+                        electricityTariff: 0.20,       
+                        vatPercentage: 15,
+                        monthlyRent: 0,
+                        monthlyMachinesCost: 0,
+                        includeFacilityCosts: false
+                    },
+                    products: {
+                        p160: {
+                            name: 'Block 95x95x160',
+                            glue: 0.288,
+                            powder: 0.340,
+                            chopped: 0.252,
+                            dailyProduction: 1500,
+                            bundleSize: 1060
+                        },
+                        p95: {
+                            name: 'Block 95x95x95',
+                            glue: 0.171, 
+                            powder: 0.202,
+                            chopped: 0.150,
+                            dailyProduction: 2000,
+                            bundleSize: 1680
+                        },
+                        p140: {
+                            name: 'Block 95x95x140',
+                            glue: 0.252,
+                            powder: 0.298,
+                            chopped: 0.221,
+                            dailyProduction: 1700, 
+                            bundleSize: 1200 
+                        }
+                    }
+                }
+            },
+            computed: {
+                totalPowderWeight() { return this.settings.powderTransportBags * this.settings.powderBagWeight; },
+                transportCostPerKg() { return this.totalPowderWeight > 0 ? this.settings.powderTransportCost / this.totalPowderWeight : 0; },
+                finalPowderCost() { return parseFloat(this.settings.powderPurchasePrice) + parseFloat(this.transportCostPerKg); },
+                
+                totalMonthlyLaborCost() { return this.settings.laborCount * this.settings.laborSalary; },
+                dailyLaborCost() { return this.totalMonthlyLaborCost / this.settings.workingDaysPerMonth; },
+                
+                dailyEnergyCostExclVat() { return this.settings.dailyEnergyConsumption * this.settings.electricityTariff; },
+                vatAmount() { return this.dailyEnergyCostExclVat * (this.settings.vatPercentage / 100); },
+                dailyEnergyCostInclVat() { return this.dailyEnergyCostExclVat + this.vatAmount; },
+                
+                totalMonthlyFacilityCost() { return this.settings.monthlyRent + this.settings.monthlyMachinesCost; },
+                dailyFacilityCost() { return this.settings.includeFacilityCosts ? (this.totalMonthlyFacilityCost / this.settings.workingDaysPerMonth) : 0; }
+            },
+            methods: {
+                materialCost(product) {
+                    return (product.glue * this.settings.gluePrice) + 
+                           (product.powder * this.finalPowderCost) + 
+                           (product.chopped * this.settings.choppedWoodPrice);
+                },
+                laborCost(product) {
+                    return product.dailyProduction > 0 ? this.dailyLaborCost / product.dailyProduction : 0;
+                },
+                energyCost(product) {
+                    return product.dailyProduction > 0 ? this.dailyEnergyCostInclVat / product.dailyProduction : 0;
+                },
+                facilityCost(product) {
+                    return product.dailyProduction > 0 ? this.dailyFacilityCost / product.dailyProduction : 0;
+                },
+                totalCost(product) {
+                    return this.materialCost(product) + this.laborCost(product) + this.energyCost(product) + (this.settings.includeFacilityCosts ? this.facilityCost(product) : 0);
+                },
+                bundleCost(product) {
+                    return this.totalCost(product) * product.bundleSize;
+                },
+                dailyCost(product) {
+                    return this.totalCost(product) * product.dailyProduction;
+                },
+                printPage() {
+                    window.print();
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
+
+
